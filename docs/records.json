@@ -1,8 +1,8 @@
 {
   "version": 1,
   "$comment": "The records this template serves: one example record.",
-  "host": "https://npstorey.github.io/typedstandards-host-template/",
-  "trustRegistryUrl": "https://npstorey.github.io/typedstandards-host-template/.well-known/typed-publisher.json",
+  "host": "https://host-template.typedstandards.org/",
+  "trustRegistryUrl": "https://host-template.typedstandards.org/.well-known/typed-publisher.json",
   "records": [
     {
       "name": "first-note",

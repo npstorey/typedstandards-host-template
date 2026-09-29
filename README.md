@@ -6,7 +6,7 @@ replace the example record with your own, and its workflow checks on every push 
 what Pages serves is what [`@typedstandards/host-core`](https://www.npmjs.com/package/@typedstandards/host-core)
 builds, and that every record verifies.
 
-[![Verify this record with Typed Standards](https://typedstandards.org/badge/typed-standards-verify.svg)](<https://typedstandards.org/verify?url=https%3A%2F%2Fnpstorey.github.io%2Ftypedstandards-host-template%2Fbundles%2Ffirst-note.bundle.json>)
+[![Verify this record with Typed Standards](https://typedstandards.org/badge/typed-standards-verify.svg)](<https://typedstandards.org/verify?url=https%3A%2F%2Fhost-template.typedstandards.org%2Fbundles%2Ffirst-note.bundle.json>)
 
 - **What it pins.** `@typedstandards/host-core` 0.1.0, exactly, and
   [`@typedstandards/cli`](https://www.npmjs.com/package/@typedstandards/cli) 0.2.0,
@@ -23,7 +23,7 @@ builds, and that every record verifies.
 | `host.json` | The host manifest: the origin, the visibility, the registry and the records. host-core reads it. |
 | `records/` | What you sign and what signing printed: the note, the input to `sign`, and `sign`'s output. Kept out of `docs/`. |
 | `host-policy.json` | The display policy: which records a page shows, and as what. |
-| `docs/` | What Pages serves. `bundles/`, `.well-known/typed-publisher.json` and `records.json` are `typedstandards-host build`'s output. `.nojekyll` and `index.html` are written by hand. |
+| `docs/` | What Pages serves. `bundles/`, `.well-known/typed-publisher.json` and `records.json` are `typedstandards-host build`'s output. `.nojekyll`, `CNAME` and `index.html` are written by hand; `CNAME` names this template's domain. |
 | `verify-output.txt` | The golden: `typedstandards-host verify`'s output on `docs/`. |
 | `display.mjs` | Reads every record through `host-policy.json` with host-core's `displayOf`, and exits 1 when one is refused. |
 | `.github/workflows/check.yml` | The workflow. |
@@ -70,7 +70,7 @@ bundles (`verify-output.txt`).
 | The identifier is the key's | Attested (#14, #6) | #14 reads `key_derived_match`: the `did:key` identifier is derived from the public key that signed. #6 reads `ok`: the signature's `kid` equals `metadata.signingKeyId`. |
 | Whether a record is withdrawn | Attested (#10), for what the bundle carries | A withdrawal is a signed attestation carried in the unsigned bundle. `verify` checks each one's signature and signer, and that the status they give equals the one `records.json` states. A host could leave a withdrawal out, and the record's own signature cannot show that it was not withdrawn. |
 | The served files are what host-core builds | Checked by `check`, not by a verifier | `check` rebuilds `docs/` from `host.json` and `records/` and compares byte for byte. The bundle's view fields that are not copied from the package (the title, the visibility, `trustRegistryUrl` and the registry copy) are the host's. `verify` checks that every copied field equals the package's. |
-| The key is active | Host's statement | `.well-known/typed-publisher.json` lists the key as active from the first record's `createdAt`. `verify` reads it as the file a verifier fetches from `trustRegistryUrl`, and #5 reads `active`. That shows which host publishes the statement, not who holds the key. |
+| The key is active | Host's statement | `.well-known/typed-publisher.json` lists the key as active from the first record's `createdAt`. `verify` reads it as the file a verifier fetches from `trustRegistryUrl`, and #5 reads `active`. That shows which host publishes the statement, not who holds the key. The registry is this template's own statement about its example key. It is not a Typed Standards record, and not an endorsement by the Typed Standards specification or by typedstandards.org, although this host is a subdomain of it. |
 | Who holds the key | Not covered | The signer is a pseudonymous `did:key`. Its `displayName` names this template, not a person. The example record's key was generated for its one signature and deleted after it. |
 | Revocation of the key | Not covered | A `did:key` has no rotation. host-core 0.1.0 serves the key as active, and `host.json` has no field to mark it revoked. Anyone who holds a leaked seed can sign as the identifier. |
 | Capture method and producer profile | Asserted (#15) | #15 reads `ok`: `script-run` is a value the `scripted-recomputation` profile allows. The label is signed, so changing it breaks #1, but no check establishes it. |
@@ -85,52 +85,60 @@ the carried attestations.
 
 ## The served URLs
 
-Pages serves `docs/` from `main`. With `origin` set as in `host.json`:
+Pages serves `docs/` from `main`, at the custom domain `docs/CNAME` names, over
+HTTPS. With `origin` set as in `host.json`:
 
 | URL | What |
 |---|---|
-| `https://npstorey.github.io/typedstandards-host-template/` | `docs/index.html` |
-| `https://npstorey.github.io/typedstandards-host-template/bundles/first-note.bundle.json` | The example record's bundle |
-| `https://npstorey.github.io/typedstandards-host-template/records.json` | The index, version 1 |
-| `https://npstorey.github.io/typedstandards-host-template/.well-known/typed-publisher.json` | The key registry, the bundle's `trustRegistryUrl` |
+| `https://host-template.typedstandards.org/` | `docs/index.html` |
+| `https://host-template.typedstandards.org/bundles/first-note.bundle.json` | The example record's bundle |
+| `https://host-template.typedstandards.org/records.json` | The index, version 1 |
+| `https://host-template.typedstandards.org/.well-known/typed-publisher.json` | The key registry, the bundle's `trustRegistryUrl` |
 
 The verifier link for the example record:
 
 ```
-https://typedstandards.org/verify?url=https%3A%2F%2Fnpstorey.github.io%2Ftypedstandards-host-template%2Fbundles%2Ffirst-note.bundle.json
+https://typedstandards.org/verify?url=https%3A%2F%2Fhost-template.typedstandards.org%2Fbundles%2Ffirst-note.bundle.json
 ```
 
-### A project site's path prefix
+### Serve it over HTTPS
 
-A repository's Pages site is a project site, served under a path:
-`https://<owner>.github.io/<repository>/`. `origin` carries that path, with no
-trailing `/`, and host-core puts every served URL under it, the registry included:
-`<origin>/.well-known/typed-publisher.json`. The registry is found by the URL each
-bundle names in `trustRegistryUrl`, not by the host's root.
-
-If your account's user site (`<owner>.github.io`) has a custom domain, GitHub serves
-your project sites under that domain instead, and the `github.io` URL redirects
-there. Set `origin` to the URL Pages actually serves, over `https`, and check it
-answers without a redirect once Pages has deployed:
+The browser verifier runs on an HTTPS page, so it can fetch the bundle and the
+registry only over HTTPS: a browser blocks an `http` fetch, or a redirect to `http`,
+from an HTTPS page. In the repository's Pages settings, set the custom domain and
+turn on **Enforce HTTPS**. Once Pages has deployed, check that `origin` answers over
+HTTPS without a redirect:
 
 ```sh
-curl -sI "<origin>/records.json"   # expect HTTP 200, and no location header
+curl -sI "https://host-template.typedstandards.org/records.json"   # expect HTTP 200, and no location header
 ```
 
-A site with its own custom domain has no path prefix: `origin` is then
-`https://<domain>`, and `docs/CNAME` holds the domain.
+### A site with a path prefix
+
+This template's site has its own domain, so `origin` has no path. A copy served as
+a project site with no custom domain is served under a path,
+`https://<owner>.github.io/<repository>/`. `origin` then carries that path, with no
+trailing `/`, and host-core puts every served URL under it, the registry included:
+`<origin>/.well-known/typed-publisher.json`. A verifier finds the registry by the
+URL each bundle names in `trustRegistryUrl`, not at the host's root.
+
+If the account's user site (`<owner>.github.io`) has a custom domain, GitHub serves
+the account's project sites under that domain instead, and the `github.io` URL
+redirects there, possibly over `http`. Set `origin` to the URL Pages actually serves
+over HTTPS, and check it with the `curl` above.
 
 ### Cross-origin reads
 
 The browser verifier at typedstandards.org fetches the bundle and the registry from
-another origin, so it needs the host to send `Access-Control-Allow-Origin`. GitHub
-Pages sent `access-control-allow-origin: *` on the Pages sites checked on
-2026-09-29, for a JSON file under `.well-known/` among them. This template's own site
-is checked after Pages first deploys it:
+another origin, so it needs the host to send `Access-Control-Allow-Origin`. On
+2026-09-29, GitHub Pages sent `access-control-allow-origin: *` on the two Pages sites
+checked, one of them for a JSON file under `.well-known/` on a custom domain. This
+template's own site has not been checked yet: that is done once Pages first deploys
+it, with:
 
 ```sh
 curl -sI -H 'Origin: https://typedstandards.org' \
-  "https://npstorey.github.io/typedstandards-host-template/bundles/first-note.bundle.json" \
+  "https://host-template.typedstandards.org/bundles/first-note.bundle.json" \
   | grep -i '^access-control-allow-origin'
 ```
 
@@ -143,7 +151,7 @@ the site.
 snippets, in the site's own percent-encoded form. The example record's HTML:
 
 ```html
-<a href="https://typedstandards.org/verify?url=https%3A%2F%2Fnpstorey.github.io%2Ftypedstandards-host-template%2Fbundles%2Ffirst-note.bundle.json">
+<a href="https://typedstandards.org/verify?url=https%3A%2F%2Fhost-template.typedstandards.org%2Fbundles%2Ffirst-note.bundle.json">
   <img src="https://typedstandards.org/badge/typed-standards-verify.svg" alt="Verify this record with Typed Standards" width="248" height="30" />
 </a>
 ```
@@ -151,7 +159,7 @@ snippets, in the site's own percent-encoded form. The example record's HTML:
 and its Markdown:
 
 ```md
-[![Verify this record with Typed Standards](https://typedstandards.org/badge/typed-standards-verify.svg)](<https://typedstandards.org/verify?url=https%3A%2F%2Fnpstorey.github.io%2Ftypedstandards-host-template%2Fbundles%2Ffirst-note.bundle.json>)
+[![Verify this record with Typed Standards](https://typedstandards.org/badge/typed-standards-verify.svg)](<https://typedstandards.org/verify?url=https%3A%2F%2Fhost-template.typedstandards.org%2Fbundles%2Ffirst-note.bundle.json>)
 ```
 
 The badge is a call to verify, not a verdict. `docs/index.html` links to the
@@ -160,16 +168,23 @@ host and the page loads nothing from any other host.
 
 ## What a copy changes
 
-1. **`origin`** in `host.json`: the URL your Pages site is served at (see the path
-   prefix above). The registry's and the index's `$comment` strings are yours too.
-2. **The record.** Remove the example record and sign your own (below). `build`
+1. **`docs/CNAME`, before you enable Pages.** Delete it, or replace its one line with
+   your own domain. It names this template's domain, and GitHub Pages reads it as
+   the site's custom domain, so a copy that keeps it would try to claim this
+   template's domain instead of serving yours.
+2. **`origin`** in `host.json`: the URL your Pages site is served at over HTTPS (see
+   [a site with a path prefix](#a-site-with-a-path-prefix)). The registry's and the
+   index's `$comment` strings are yours too: the registry's says whose statement it
+   is.
+3. **The record.** Remove the example record and sign your own (below). `build`
    deletes nothing, so the example's bundle is removed by hand; `check` reports a
    served bundle that `host.json` no longer lists.
-3. **The policy.** `signer` in `host-policy.json` becomes your `did:key`, and the
+4. **The policy.** `signer` in `host-policy.json` becomes your `did:key`, and the
    rules name your records' statuses and roles.
-4. **`docs/index.html`**, by hand, and the URLs and badge in this README.
-5. **The golden**, `verify-output.txt`, [regenerated](#regenerate-the-golden).
-6. **Pages**, in the repository's settings: deploy from a branch, `main`, `/docs`.
+5. **`docs/index.html`**, by hand, and the URLs and badge in this README.
+6. **The golden**, `verify-output.txt`, [regenerated](#regenerate-the-golden).
+7. **Pages**, in the repository's settings: deploy from a branch, `main`, `/docs`;
+   your custom domain, if any; and Enforce HTTPS.
 
 ## Sign your first record
 
@@ -201,6 +216,7 @@ workflow signs nothing. The seed is the only way to sign, or withdraw, under you
 ### 2. Replace the example record
 
 ```sh
+git rm -q docs/CNAME   # or write your own domain into it
 git rm -q records/first-note.md records/first-note.signed.json docs/bundles/first-note.bundle.json
 git mv records/first-note.input.json records/my-record.input.json
 printf '# My record\n\nThe text I am signing.\n' > records/my-record.md
