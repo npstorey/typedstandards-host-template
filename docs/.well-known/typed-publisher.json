@@ -1,0 +1,18 @@
+{
+  "$comment": "The signing key of this template's example record: a pseudonymous did:key, generated for one signature and deleted after it.",
+  "keys": [
+    {
+      "kid": "did:key:z6Mks7BK2kyVhoPY3ayt6ALKeZY5eCbu64XyQuje9gTUxiUB",
+      "publicKey": "MCowBQYDK2VwAyEAvAL2Gnw9fYcVnr8jA68102bdP43R5Nfck/RmIDrPazQ=",
+      "status": "active",
+      "activatedAt": "2026-09-29T12:59:35.367Z",
+      "deprecatedAt": null,
+      "revokedAt": null,
+      "signerIdentity": {
+        "bindingTier": "pseudonymous",
+        "identifier": "did:key:z6Mks7BK2kyVhoPY3ayt6ALKeZY5eCbu64XyQuje9gTUxiUB",
+        "displayName": "typedstandards-host-template"
+      }
+    }
+  ]
+}

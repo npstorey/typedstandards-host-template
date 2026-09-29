@@ -1,0 +1,20 @@
+{
+  "$comment": "The host manifest. typedstandards-host build writes docs/ from it; every path is relative to this file. A copy of the template changes origin to the URL its Pages site is served at, and replaces the record.",
+  "origin": "https://npstorey.github.io/typedstandards-host-template",
+  "visibility": "public",
+  "registry": {
+    "$comment": "The signing key of this template's example record: a pseudonymous did:key, generated for one signature and deleted after it."
+  },
+  "index": {
+    "$comment": "The records this template serves: one example record."
+  },
+  "records": [
+    {
+      "name": "first-note",
+      "signed": "records/first-note.signed.json",
+      "attestations": [],
+      "title": "A first signed note",
+      "extensions": { "role": "note" }
+    }
+  ]
+}
