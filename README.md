@@ -27,6 +27,7 @@ builds, and that every record verifies.
 | `verify-output.txt` | The golden: `typedstandards-host verify`'s output on `docs/`. |
 | `display.mjs` | Reads every record through `host-policy.json` with host-core's `displayOf`, and exits 1 when one is refused. |
 | `.github/workflows/check.yml` | The workflow. |
+| `.gitleaks.toml` | Tells [gitleaks](https://github.com/gitleaks/gitleaks) that an Ed25519 `did:key` identifier is a public key, not a secret. Without it, gitleaks reads every `did:key` in the signed and served files as an API key. |
 
 ## What the workflow checks
 
