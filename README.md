@@ -8,7 +8,7 @@ builds, and that every record verifies.
 
 [![Verify this record with Typed Standards](https://typedstandards.org/badge/typed-standards-verify.svg)](<https://typedstandards.org/verify?url=https%3A%2F%2Fhost-template.typedstandards.org%2Fbundles%2Ffirst-note.bundle.json>)
 
-- **What it pins.** `@typedstandards/host-core` 0.1.0, exactly, and
+- **What it pins.** `@typedstandards/host-core` 0.1.1, exactly, and
   [`@typedstandards/cli`](https://www.npmjs.com/package/@typedstandards/cli) 0.2.0,
   exactly, for signing. `package-lock.json` resolves both from the npm registry.
 - **What it serves.** One example record: `records/first-note.md`, a short Markdown
@@ -72,14 +72,14 @@ bundles (`verify-output.txt`).
 | The served files are what host-core builds | Checked by `check`, not by a verifier | `check` rebuilds `docs/` from `host.json` and `records/` and compares byte for byte. The bundle's view fields that are not copied from the package (the title, the visibility, `trustRegistryUrl` and the registry copy) are the host's. `verify` checks that every copied field equals the package's. |
 | The key is active | Host's statement | `.well-known/typed-publisher.json` lists the key as active from the first record's `createdAt`. `verify` reads it as the file a verifier fetches from `trustRegistryUrl`, and #5 reads `active`. That shows which host publishes the statement, not who holds the key. The registry is this template's own statement about its example key. It is not a Typed Standards record, and not an endorsement by the Typed Standards specification or by typedstandards.org, although this host is a subdomain of it. |
 | Who holds the key | Not covered | The signer is a pseudonymous `did:key`. Its `displayName` names this template, not a person. The example record's key was generated for its one signature and deleted after it. |
-| Revocation of the key | Not covered | A `did:key` has no rotation. host-core 0.1.0 serves the key as active, and `host.json` has no field to mark it revoked. Anyone who holds a leaked seed can sign as the identifier. |
+| Revocation of the key | Not covered | A `did:key` has no rotation. host-core 0.1.1 serves the key as active, and `host.json` has no field to mark it revoked. Anyone who holds a leaked seed can sign as the identifier. |
 | Capture method and producer profile | Asserted (#15) | #15 reads `ok`: `script-run` is a value the `scripted-recomputation` profile allows. The label is signed, so changing it breaks #1, but no check establishes it. |
 | The display policy | Host's statement | `host-policy.json` is this host's rule for what a page shows. It is not signed, and no verifier reads it. |
 | When the record existed | Not covered | #7 does not apply: no RFC 3161 token was requested. `createdAt` is the signer's own claim. |
 | Inclusion in a transparency log | Not covered | #8 does not apply: no transparency-log entry was submitted. |
 | That any statement in the file is correct | Not covered | A signature shows the bytes are unchanged since signing, not that they are true. |
 
-A bundle carries no `lifecycle` summary in host-core 0.1.0. A record's status is in
+A bundle carries no `lifecycle` summary in host-core 0.1.1. A record's status is in
 `records.json`, in the display policy's reading, and in the verifier's own reading of
 the carried attestations.
 
@@ -131,14 +131,16 @@ over HTTPS, and check it with the `curl` above.
 
 The browser verifier at typedstandards.org fetches the bundle and the registry from
 another origin, so it needs the host to send `Access-Control-Allow-Origin`. On
-2026-09-29, GitHub Pages sent `access-control-allow-origin: *` on the two Pages sites
-checked, one of them for a JSON file under `.well-known/` on a custom domain. This
-template's own site has not been checked yet: that is done once Pages first deploys
-it, with:
+2026-09-29, with `Origin: https://typedstandards.org`, this template's site answered
+`HTTP/2 200` with `access-control-allow-origin: *` for four paths: the bundle, the
+registry, `records.json` and `/`. The same day, the verifier at typedstandards.org,
+given the bundle's URL, read "Verified", with the key active in the registry it
+fetched. That is what was checked; a copy checks its own site once Pages has
+deployed it:
 
 ```sh
 curl -sI -H 'Origin: https://typedstandards.org' \
-  "https://host-template.typedstandards.org/bundles/first-note.bundle.json" \
+  "<origin>/bundles/<name>.bundle.json" \
   | grep -i '^access-control-allow-origin'
 ```
 
@@ -301,7 +303,7 @@ policy kept as YAML is converted first, with any YAML-to-JSON tool. With the
 npx --yes yaml@2.9.1 --json --single --strict --indent 2 < host-policy.yaml > host-policy.json
 ```
 
-This YAML converts to the committed `host-policy.json`:
+This YAML converts, byte for byte, to the committed `host-policy.json`:
 
 ```yaml
 $comment: >-
@@ -330,7 +332,7 @@ first rule it matches, and refused when its status is not `active`, `withdrawn` 
 
 ## Visibility is host-wide
 
-`visibility` in `host.json` is every record's disclosure state: host-core 0.1.0 has
+`visibility` in `host.json` is every record's disclosure state: host-core 0.1.1 has
 no per-record visibility. It is never defaulted. Records that need different
 visibilities need separate hosts.
 

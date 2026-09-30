@@ -6,7 +6,11 @@
     {
       "$comment": "An active note is shown as current.",
       "status": "active",
-      "extensions": { "role": ["note"] },
+      "extensions": {
+        "role": [
+          "note"
+        ]
+      },
       "as": "current"
     },
     {
