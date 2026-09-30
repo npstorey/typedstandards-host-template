@@ -15,7 +15,7 @@
     "display": "node display.mjs"
   },
   "dependencies": {
-    "@typedstandards/host-core": "0.1.0"
+    "@typedstandards/host-core": "0.1.1"
   },
   "devDependencies": {
     "@typedstandards/cli": "0.2.0"
