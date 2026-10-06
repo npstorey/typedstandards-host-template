@@ -1,3 +1,5 @@
+# Branch mode. It runs unless the repository variable TYPEDSTANDARDS_HOST_MODE is publish;
+# publish.yml runs only when it is (the README's "Publishing from a notebook").
 # On every push and pull request, on Node 24:
 #   - npm ci installs the exact versions package-lock.json pins;
 #   - typedstandards-host check rebuilds docs/ in memory from host.json and records/, and
@@ -18,6 +20,7 @@ permissions:
 
 jobs:
   check:
+    if: vars.TYPEDSTANDARDS_HOST_MODE != 'publish'
     runs-on: ubuntu-24.04
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
