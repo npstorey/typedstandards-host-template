@@ -313,10 +313,10 @@ $comment: >-
 signer: did:key:z6Mks7BK2kyVhoPY3ayt6ALKeZY5eCbu64XyQuje9gTUxiUB
 type: content/analysis/v1
 display:
-  - $comment: An active note is shown as current.
+  - $comment: An active note, or a record published from a notebook, is shown as current.
     status: active
     extensions:
-      role: [note]
+      role: [note, notebook]
     as: current
   - $comment: A withdrawn record stays listed, marked withdrawn.
     status: withdrawn
