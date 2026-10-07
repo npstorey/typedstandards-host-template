@@ -2,9 +2,17 @@
 
 A GitHub template repository for serving signed [Typed Standards](https://typedstandards.org)
 records from GitHub Pages under your own `did:key`. Copy it with "Use this template",
-replace the example record with your own, and its workflow checks on every push that
-what Pages serves is what [`@typedstandards/host-core`](https://www.npmjs.com/package/@typedstandards/host-core)
-builds, and that every record verifies.
+and replace the example record with your own. A copy runs in one of two modes:
+
+- **Branch mode**, the default, and this template's own. You sign in your terminal,
+  run `build`, and commit what Pages serves, under `docs/`. On every push, `check.yml`
+  checks that the committed `docs/` is what
+  [`@typedstandards/host-core`](https://www.npmjs.com/package/@typedstandards/host-core)
+  builds, and that every record verifies.
+- **Publish mode.** You commit only the signed record and its entry in `host.json`,
+  for example from a notebook. On every push to `main`, `publish.yml` builds the site
+  in the job, verifies every record, and deploys Pages from the job. See
+  [Publishing from a notebook](#publishing-from-a-notebook).
 
 [![Verify this record with Typed Standards](https://typedstandards.org/badge/typed-standards-verify.svg)](<https://typedstandards.org/verify?url=https%3A%2F%2Fhost-template.typedstandards.org%2Fbundles%2Ffirst-note.bundle.json>)
 
@@ -13,8 +21,8 @@ builds, and that every record verifies.
   exactly, for signing. `package-lock.json` resolves both from the npm registry.
 - **What it serves.** One example record: `records/first-note.md`, a short Markdown
   note signed under `raw-bytes/v1`.
-- **What it holds.** No key. Signing runs in your own terminal. The workflow only
-  builds, checks and verifies, so it needs no secret.
+- **What it holds.** No key. Signing runs in your own terminal or notebook. Neither
+  workflow signs: each builds, checks and verifies, and reads no repository secret.
 
 ## Layout
 
@@ -23,13 +31,20 @@ builds, and that every record verifies.
 | `host.json` | The host manifest: the origin, the visibility, the registry and the records. host-core reads it. |
 | `records/` | What you sign and what signing printed: the note, the input to `sign`, and `sign`'s output. Kept out of `docs/`. |
 | `host-policy.json` | The display policy: which records a page shows, and as what. |
-| `docs/` | What Pages serves. `bundles/`, `.well-known/typed-publisher.json` and `records.json` are `typedstandards-host build`'s output. `.nojekyll`, `CNAME` and `index.html` are written by hand; `CNAME` names this template's domain. |
-| `verify-output.txt` | The golden: `typedstandards-host verify`'s output on `docs/`. |
-| `display.mjs` | Reads every record through `host-policy.json` with host-core's `displayOf`, and exits 1 when one is refused. |
-| `.github/workflows/check.yml` | The workflow. |
+| `docs/` | Branch mode: what Pages serves. `bundles/`, `.well-known/typed-publisher.json` and `records.json` are `typedstandards-host build`'s output. `.nojekyll`, `CNAME` and `index.html` are written by hand; `CNAME` names this template's domain. Publish mode keeps only `index.html` and `.nojekyll`, which the job copies into the site it builds. |
+| `verify-output.txt` | Branch mode's golden: `typedstandards-host verify`'s output on `docs/`. Publish mode has none; each run's summary carries `verify`'s output. |
+| `display.mjs` | Reads every record an index lists (`docs/records.json`, or the path given as its argument) through `host-policy.json` with host-core's `displayOf`, and exits 1 when one is refused. |
+| `.github/workflows/check.yml` | Branch mode's workflow. |
+| `.github/workflows/publish.yml` | Publish mode's workflow. |
 | `.gitleaks.toml` | Tells [gitleaks](https://github.com/gitleaks/gitleaks) that an Ed25519 `did:key` identifier is a public key, not a secret. Without it, gitleaks reads every `did:key` in the signed and served files as an API key. |
 
-## What the workflow checks
+## What the workflows check
+
+A repository variable, `TYPEDSTANDARDS_HOST_MODE`, picks which workflow's jobs run:
+`publish.yml`'s when it is `publish`, `check.yml`'s otherwise, unset included
+([why a variable](#the-mode-switch-a-repository-variable)).
+
+### Branch mode: `check.yml`
 
 On every push and pull request, on Node 24:
 
@@ -40,6 +55,26 @@ On every push and pull request, on Node 24:
    network blocked, and its output must equal `verify-output.txt`.
 4. `node display.mjs` reads every record through `host-policy.json`, and none may be
    refused.
+
+### Publish mode: `publish.yml`
+
+On every push to `main`, and on demand, on Node 24:
+
+1. `npm ci` installs the exact versions `package-lock.json` pins.
+2. `npx typedstandards-host build --out "$RUNNER_TEMP/site"` builds the served tree
+   from `host.json` and `records/`, beside copies of `docs/index.html` and
+   `docs/.nojekyll`.
+3. `npx typedstandards-host verify` verifies every record in that tree offline, with the
+   network blocked. Its output goes to the run summary, and a failure stops the job.
+4. `node display.mjs "$RUNNER_TEMP/site/records.json"` reads every record in the built
+   index through `host-policy.json`, and none may be refused.
+5. `actions/upload-pages-artifact` uploads the tree with `include-hidden-files: true`.
+   With its default, `false`, the action's `tar` adds `--exclude=.[^/]*`, and
+   `.well-known/typed-publisher.json` is left out.
+6. `actions/deploy-pages` deploys it. Only this job holds `pages: write` and
+   `id-token: write`; the workflow's default is `contents: read`.
+
+A failed step deploys nothing, and the site stays as it was.
 
 **Why Node 24, and not an exact version.** The workflow pins the major version, 24.
 The first line of `verify`'s output names no Node version and no core version:
@@ -170,6 +205,9 @@ host and the page loads nothing from any other host.
 
 ## What a copy changes
 
+These are branch mode's steps. Publish mode's are in
+[Publishing from a notebook](#publishing-from-a-notebook).
+
 1. **`docs/CNAME`, before you enable Pages.** Delete it, or replace its one line with
    your own domain. It names this template's domain, and GitHub Pages reads it as
    the site's custom domain, so a copy that keeps it would try to claim this
@@ -190,7 +228,7 @@ host and the page loads nothing from any other host.
 
 ## Sign your first record
 
-In a copy of this template, on Node 24. The commands run from the repository's root.
+In a copy of this template in branch mode, on Node 24. The commands run from the repository's root.
 
 ```sh
 npm ci
@@ -292,6 +330,186 @@ Add it to the record's `attestations` in `host.json`:
 
 and run step 5 again. The record still verifies, `records.json` lists it as
 `withdrawn` with the reason, and the policy's `withdrawn` rule displays it.
+
+## Publishing from a notebook
+
+In publish mode the repository holds only inputs: the signed records under `records/`,
+their entries in `host.json`, the policy, and `docs/index.html`. A notebook publishes a
+record by committing its signed file and its `host.json` entry to `main` in one
+commit, with the Python package [`typedstandards`](https://pypi.org/project/typedstandards/);
+its README describes the call. Each push to `main` then runs `publish.yml`, which
+builds, verifies and deploys the whole site
+([what it runs](#publish-mode-publishyml)). The measurements behind these steps were
+made on a public repository.
+
+### The mode switch: a repository variable
+
+| Mode | `TYPEDSTANDARDS_HOST_MODE` | The job that runs | Pages source | What is served |
+|---|---|---|---|---|
+| Branch mode | unset, or anything but `publish` | `check.yml`'s | Deploy from a branch: `main`, `/docs` | The committed `docs/` |
+| Publish mode | `publish` | `publish.yml`'s | GitHub Actions | `build` over the pushed commit, made in the job |
+
+Each job reads the variable in its own `if:` line:
+
+```yaml
+# .github/workflows/check.yml, job check
+    if: vars.TYPEDSTANDARDS_HOST_MODE != 'publish'
+# .github/workflows/publish.yml, jobs build and deploy
+    if: vars.TYPEDSTANDARDS_HOST_MODE == 'publish'
+```
+
+Why a variable, and not deleting the other mode's workflow: both workflows start on
+a push to `main`. This template is itself a branch-mode site, so it has to carry
+`publish.yml` without running it: its own site is served from `main`, `/docs`, not
+deployed from a job. Deleting a file cannot do that, and a variable can.
+A copy made from the template gets both files and no variable, so it starts in
+branch mode, as copies made before publish mode do. One setting switches a copy
+either way, with no commit. In each mode the other workflow still starts on a push,
+and its job is skipped.
+
+### Steps
+
+1. **Make the repository.** "Use this template", public.
+2. **Turn on Pages from Actions, and set the mode.** In the repository's settings:
+   Pages, Build and deployment, Source: **GitHub Actions**. Then Secrets and
+   variables, Actions, Variables: a repository variable `TYPEDSTANDARDS_HOST_MODE`
+   with the value `publish`. With the GitHub CLI:
+
+   ```sh
+   gh variable set TYPEDSTANDARDS_HOST_MODE --body publish --repo <account>/<repository>
+   ```
+
+   From here `check.yml`'s job is skipped and `publish.yml`'s jobs run.
+3. **Pick the address, with one `curl`** on the account address, once step 2 is
+   done, reading the first hop only:
+
+   ```sh
+   curl -sS -o /dev/null -w 'first-hop: %{http_code} location=%{redirect_url}\n' \
+     "https://<account>.github.io/<repository>/"
+   ```
+
+   - **A `200`:** use the account address as it is (step 4a).
+   - **A redirect** (a `301` with a `location`): use a custom subdomain (step 4b).
+     An account whose own user site has a custom domain gets this: GitHub redirects
+     the account address to that domain, over `http`, on a response with no
+     `access-control-allow-origin`, as `first-hop: 301 location=http://<other-host>/<repository>/`.
+     A page on HTTPS cannot follow that.
+
+   A `404` with no `location` is not a redirect: read it as the first case, and run
+   the `curl` again once the first deploy is served. `origin` can change later,
+   because each run rebuilds every bundle from it. The `200` case rests on GitHub's
+   documentation; the account these steps were measured on got the redirect.
+4. **Set up the address.**
+   - **a. The account address.** `origin` in `host.json` is
+     `https://<account>.github.io/<repository>`, with no trailing `/`
+     ([a site with a path prefix](#a-site-with-a-path-prefix)).
+   - **b. A custom subdomain.** The general pattern is a subdomain of a domain you
+     own, for example `typedstandards.<your-site>`. At your DNS provider, add a
+     `CNAME` record from that name to `<account>.github.io.`. In the Pages settings,
+     set the custom domain to the same name, and turn on **Enforce HTTPS** once its
+     certificate is approved. `origin` is `https://<subdomain>`. A site deployed from
+     Actions ignores `docs/CNAME` (GitHub's documentation), so the domain lives in the
+     Pages settings only.
+
+     **When a certificate does not arrive.** On one site deployed from Actions, the
+     certificate stayed absent for about 34.5 hours. Changing the custom domain to
+     another name, one with no DNS record, and back again got it approved in under a
+     minute. Then read its state:
+
+     ```sh
+     gh api repos/<account>/<repository>/pages --jq .https_certificate.state   # expect approved
+     ```
+
+   GitHub Pages is the documented host, not the only one. Any static host will do
+   that serves `/records.json`, `/.well-known/typed-publisher.json` and each
+   `/bundles/<name>.bundle.json` under `origin`, over HTTPS with no redirect, with a
+   JSON content type and `access-control-allow-origin: *`. `publish.yml`'s upload and
+   deploy jobs are Pages-specific.
+5. **Change the copy for publish mode**, in one commit:
+
+   ```sh
+   git rm -q -r docs/bundles docs/.well-known docs/records.json docs/CNAME verify-output.txt
+   git rm -q records/first-note.md records/first-note.input.json records/first-note.signed.json
+   ```
+
+   - `docs/bundles/`, `docs/.well-known/` and `docs/records.json` are build output.
+     Publish mode builds them in the job, so committed copies would go stale and no
+     workflow would check them.
+   - `docs/CNAME` names this template's domain, and Actions ignores it.
+   - `verify-output.txt` is branch mode's golden. In publish mode it would change on
+     every publish, and each run's summary carries `verify`'s output instead.
+   - Keep `docs/index.html` and `docs/.nojekyll`: the job copies both into the site it
+     builds, and its `cp` fails without either. Edit `index.html` by hand: it names
+     this template's example record, and no build adds the records a notebook
+     publishes to it; `records.json` lists them. `.nojekyll` matters only in branch
+     mode, and keeping it lets the copy switch back.
+   - In `host.json`: set `origin` (step 4), and remove the example's entry from
+     `records`, leaving `"records": []`. Edit the registry's and the index's `$comment`
+     strings, which are yours.
+   - In `host-policy.json`: set `signer` to your `did:key`, the
+     `package.signer.identifier` of any record signed with your seed. The active rule
+     admits the roles `note` and `notebook`; name any other role your records carry.
+
+   host-core refuses a manifest with no records, so this commit's run fails at
+   `build` with `records must be a non-empty array`, and deploys nothing. The first
+   publish makes the first deploy.
+6. **Make the token.** A fine-grained personal access token: this one repository
+   only; repository permission **Contents: Read and write**, and nothing else
+   (GitHub adds Metadata: Read-only on its own). On a public repository the workflow
+   runs are readable with no token at all. A private repository was not measured:
+   what its token needs, and who can read its runs, are unknown. Keep the token in a
+   secret store, never in the repository or a notebook's saved output. With
+   1Password's CLI, run `op signin` in that terminal before `op run`, which otherwise
+   answers `You are not currently signed in`.
+7. **Add the ruleset.** On the default branch: block deletion and force pushes, with
+   no bypass actors, and nothing more:
+
+   ```sh
+   gh api -X POST repos/<account>/<repository>/rulesets --input - <<'JSON'
+   {
+     "name": "main",
+     "target": "branch",
+     "enforcement": "active",
+     "conditions": { "ref_name": { "include": ["~DEFAULT_BRANCH"], "exclude": [] } },
+     "rules": [{ "type": "non_fast_forward" }, { "type": "deletion" }]
+   }
+   JSON
+   ```
+
+   No signed-commits rule: a commit made through the API with a fine-grained token is
+   unsigned, and the rule would refuse it. No pull-request rule: the notebook commits
+   to `main` directly. This ruleset lets the token's commit through.
+8. **Publish from the notebook**, as the
+   [`typedstandards` package's README](https://pypi.org/project/typedstandards/)
+   shows. The commit starts `publish.yml` within seconds; on the measured copy a new
+   record was served about 42 seconds after its commit.
+9. **See each run.** The repository's Actions tab lists `publish` runs; a run's
+   summary carries `verify`'s output, and a failed step's log says why. From a
+   terminal:
+
+   ```sh
+   gh run list --workflow publish.yml --repo <account>/<repository> --limit 5
+   curl -sS "https://api.github.com/repos/<account>/<repository>/actions/runs?head_sha=<commit>" \
+     | jq -r '.workflow_runs[] | "\(.name) \(.status) \(.conclusion) \(.html_url)"'
+   ```
+
+### When a deploy is stuck
+
+Every run builds the whole of `main`. A commit whose record fails `build` or
+`verify` (its row in the summary reads `FAIL`), or that `display.mjs` refuses, deploys
+nothing, and nor does any later commit while that record is on `main`: each later run
+fails at the same record. The site keeps serving the last good deploy.
+
+The remedy is a commit that removes the failing record: its file under `records/`
+and its entry in `host.json`, for example by reverting the commit that added it:
+
+```sh
+git revert <commit>
+git push
+```
+
+That record was never served, so removing it withdraws nothing. The next run deploys
+everything else on `main`.
 
 ## The display policy, and a policy kept as YAML
 
