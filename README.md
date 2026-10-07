@@ -465,15 +465,7 @@ and its job is skipped.
    no bypass actors, and nothing more:
 
    ```sh
-   gh api -X POST repos/<account>/<repository>/rulesets --input - <<'JSON'
-   {
-     "name": "main",
-     "target": "branch",
-     "enforcement": "active",
-     "conditions": { "ref_name": { "include": ["~DEFAULT_BRANCH"], "exclude": [] } },
-     "rules": [{ "type": "non_fast_forward" }, { "type": "deletion" }]
-   }
-   JSON
+   echo '{"name":"main","target":"branch","enforcement":"active","conditions":{"ref_name":{"include":["~DEFAULT_BRANCH"],"exclude":[]}},"rules":[{"type":"non_fast_forward"},{"type":"deletion"}]}' | gh api -X POST repos/<account>/<repository>/rulesets --input -
    ```
 
    No signed-commits rule: a commit made through the API with a fine-grained token is
