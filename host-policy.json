@@ -4,11 +4,12 @@
   "type": "content/analysis/v1",
   "display": [
     {
-      "$comment": "An active note is shown as current.",
+      "$comment": "An active note, or a record published from a notebook, is shown as current.",
       "status": "active",
       "extensions": {
         "role": [
-          "note"
+          "note",
+          "notebook"
         ]
       },
       "as": "current"
